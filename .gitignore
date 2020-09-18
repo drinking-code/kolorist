@@ -3,5 +3,7 @@ node_modules
 
 .DS_Store
 
-grammars/
 test.html
+package-lock.json
+buildpackage.sh
+bundle.js

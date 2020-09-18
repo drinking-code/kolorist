@@ -1,0 +1,24 @@
+{
+  "name": "kolorist",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/drinking-code/kolorist.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/drinking-code/kolorist/issues"
+  },
+  "homepage": "https://github.com/drinking-code/kolorist#readme",
+  "dependencies": {
+    "@stephen-riley/pcre2-wasm": "^1.2.4",
+    "onigasm": "^2.2.4"
+  }
+}
