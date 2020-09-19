@@ -92,31 +92,50 @@ kolorist.highlight = async function (code) {
                 // match all in line
                 let match = regex.searchSync(line)
                 if (match) {
-                    matches.push({match, name: pattern.name})
+                    matches.push({match, name: pattern.name, captureNames: pattern.captures})
                     // console.log(match, pattern.name, pattern.comment, pattern.match, line)
                 }
-            } // enclosing matches (with begin and end)
+            } else if (pattern.begin && pattern.end) { // enclosing matches (with begin and end)
+                // TODO: also match nested patterns
+                const regex1 = new OnigRegExp(pattern.begin)
+                let matchBegin = regex1.searchSync(line)
+                const regex2 = new OnigRegExp(pattern.begin)
+                let matchEnd = regex2.searchSync(line)
+                if (matchBegin) {
+                    matches.push({matchBegin, name: pattern.name, captureNames: pattern.captures})
+                    // console.log(match, pattern.name, pattern.comment, pattern.match, line)
+                }
+            }
             // including patterns in grammar's repository
         }
         // add classes to every match
-        console.log(matches)
         for (let i = 0; i < matches.length; i++) {
             // console.log(line);
             const match = matches[i],
                 capture = match.match[0],
                 tag = `<span class="${(match.name) ? match.name.replace('.', '-') : 'undefined-code'}">`
+            // wrapping spans around capture (below referred to as ^ capture) //TODO: also wrap named capture groups
             line = line.splice(capture.end, 0, `</span>`)
             line = line.splice(capture.start, 0, tag)
             if (matches.length - 1 === i) continue
+            // shift index numbers remaining for the line
             for (let j = i; j < matches.length; j++) {
+                // every capture in the match
                 matches[j].match.forEach(thisCapture => {
+                    /* TODO: rework here, probably doesn't cover all cases
+                    * intersection1: cap 1 starts before cap 2 starts and ends before cap 2 ends but after cap 2 starts
+                    * intersection1: cap 1 starts after cap 2 starts but before cap 2 ends and ends after cap 2 ends
+                     */
+                    // only if this capture is after the ^ capture in the string
                     if (thisCapture.start > capture.start) {
                         const tagLength = tag.length
+                        // case 1: this capture is completely after the ^ capture
                         if (thisCapture.start > capture.start + capture.length)
                             thisCapture.start += tagLength + 7
-                        else
+                        else // case 2: this capture is inside the ^ capture
                             thisCapture.start += tagLength
                         thisCapture.end += tagLength + 7
+                        // if this capture starts with
                     } else if (thisCapture.start === capture.start) {
                         thisCapture.end += tag.length + capture.length + 7
                     }
