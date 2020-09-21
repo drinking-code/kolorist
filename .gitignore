@@ -4,6 +4,7 @@ node_modules
 .DS_Store
 
 test.html
+style.css
 package-lock.json
 buildpackage.sh
 bundle.js
