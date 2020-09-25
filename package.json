@@ -18,7 +18,6 @@
   },
   "homepage": "https://github.com/drinking-code/kolorist#readme",
   "dependencies": {
-    "@stephen-riley/pcre2-wasm": "^1.2.4",
     "onigasm": "^2.2.4"
   }
 }
