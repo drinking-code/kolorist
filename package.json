@@ -19,5 +19,9 @@
   "homepage": "https://github.com/drinking-code/kolorist#readme",
   "dependencies": {
     "onigasm": "^2.2.4"
+  },
+  "devDependencies": {
+    "babel-minify": "^0.5.1",
+    "browserify": "^16.5.1"
   }
 }

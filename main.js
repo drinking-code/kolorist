@@ -3,7 +3,9 @@ const {loadWASM, OnigScanner} = require('onigasm')
 let kolorist = {utils:{}};
 
 kolorist.init = async function (grammar) {
-    switch (grammar.toLowerCase()) {
+    const grammarName = grammar.toLowerCase()
+
+    switch (grammarName) {
         case 'javascript':
             grammar = 'https://cdn.jsdelivr.net/gh/textmate/javascript.tmbundle@master/Syntaxes/JavaScript.plist'
     }
@@ -122,11 +124,7 @@ kolorist.init = async function (grammar) {
                         // make a nested grammar list of the patterns
                         patternsPatterns[index] = makeList(pattern, repo, makeRepo)
                     }
-                } else if (pattern.include && !makeRepo) {
-                    /* "makeRepo" -> not executing when making the repository list because
-                        some tags are referenced before transferred to the list
-                        an infinite reference loop might occur
-                    */
+                } else if (pattern.include) {
                     // $self references are constructed later when needed
                     if (pattern.include === '$self' || pattern.include === '$base' || pattern.include === json.scopeName) {
                         patterns.push('$self')
@@ -134,6 +132,15 @@ kolorist.init = async function (grammar) {
                         return
                     }
                     if (!pattern.include.startsWith('#')) return // todo: add importing other grammars
+                    /* "makeRepo" -> executing loosely when making the repository list because
+                        some tags are referenced before transferred to the list
+                        an infinite reference loop might occur
+                    */
+                    if (makeRepo && pattern.include.startsWith('#')) {
+                        patterns.push(pattern.include)
+                        names.push('')
+                        return
+                    }
                     // pull tag reference from repo
                     const group = repo[pattern.include.replace('#', '')]
                     // iterate every pattern in pulled tag
@@ -162,7 +169,7 @@ kolorist.init = async function (grammar) {
 
         return new Promise(resolve => {
             // parse repo
-            let repo = {} // todo: repo in repo and repo calls (include #) in repo patterns
+            let repo = {} // todo: repo inside repo
             for (let tag in json.repository) {
                 if (!json.repository.hasOwnProperty(tag)) continue
                 repo[tag] = makeList(
@@ -241,7 +248,7 @@ kolorist.highlight = async function (code, masterGrammar) {
                 captureNames.push(undefined)
             }
         }
-        tokens.push({ // todo put BEFORE scanInside() call
+        tokens.push({
             content: (content.length === 0) ? [code.substring(match.captureIndices[0].start, end)] : content,
             name: grammar.names[match.index].name,
             captureNames,
@@ -265,32 +272,43 @@ kolorist.highlight = async function (code, masterGrammar) {
     function scanInside(pos, grammar, index) {
         // generate pattern grammar
         let newGrammar = {
-            patterns: [grammar.endPatterns[index]],
+            patterns: [],
             endPatterns: {},
-            names: [grammar.names[index]],
+            names: [],
             patternsPatterns: {}
         }
         const patternsGrammar = grammar.patternsPatterns[index];
         if (patternsGrammar) {
             patternsGrammar.patterns.forEach((pattern, index) => {
-                if (pattern === '$self') {
-                    newGrammar.patterns = patternsGrammar.patterns.concat(grammar.patterns)
-                    newGrammar.names = patternsGrammar.names.concat(grammar.names)
-                    for (let i in patternsGrammar.endPatterns) {
-                        if (!patternsGrammar.endPatterns.hasOwnProperty(i)) continue
-                        newGrammar.endPatterns[i + 1 + index] = patternsGrammar.endPatterns[i]
+                if (pattern === '$self' || pattern.startsWith('#')) {
+                    let repo = masterGrammar;
+                    if (pattern.startsWith('#')) {
+                        let tagName = pattern.replace('#', '')
+                        repo = masterGrammar.repository[tagName]
+                        if (!repo) return
                     }
-
+                    newGrammar.patterns = newGrammar.patterns.concat(repo.patterns)
+                    newGrammar.names = newGrammar.names.concat(repo.names)
+                    for (let i in repo.endPatterns) {
+                        if (!repo.endPatterns.hasOwnProperty(i)) continue
+                        newGrammar.endPatterns[i + index] = repo.endPatterns[i]
+                    }
+                    for (let i in repo.patternsPatterns) {
+                        if (!repo.patternsPatterns.hasOwnProperty(i)) continue
+                        newGrammar.patternsPatterns[i + index] = repo.patternsPatterns[i]
+                    }
                 } else {
                     newGrammar.patterns.push(pattern)
                     newGrammar.names.push(patternsGrammar.names[index])
                     if (patternsGrammar.endPatterns[index])
-                        newGrammar.endPatterns[1 + index] = patternsGrammar.endPatterns[index]
+                        newGrammar.endPatterns[index] = patternsGrammar.endPatterns[index]
                     if (patternsGrammar.patternsPatterns[index])
-                        newGrammar.patternsPatterns[1 + index] = patternsGrammar.patternsPatterns[index]
+                        newGrammar.patternsPatterns[index] = patternsGrammar.patternsPatterns[index]
                 }
             })
         }
+        newGrammar.patterns.push(grammar.endPatterns[index])
+        newGrammar.names.push(grammar.names[index])
         return scanForMatch(pos, newGrammar)
     }
 
