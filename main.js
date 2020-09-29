@@ -1,17 +1,148 @@
-const {loadWASM, OnigScanner} = require('onigasm')
+const {loadWASM, OnigScanner} = require('onigasm');
 
-let kolorist = {utils:{}};
+let kolorist = {
+    cache: {},
+    utils: {
+        database: {
+            db: null,
+            get: function (table, object, value) {
+                const tx = this.db.transaction(table, 'readonly')
+                tx.onerror = e => console.error(e.target.error)
+                const req = tx.objectStore(table).get(object)
+                return new Promise(r => {
+                    req.onsuccess = e => {
+                        if (e.target.result)
+                            r(e.target.result[value])
+                        else
+                            r(null)
+                    }
+                })
+            },
+            saveGrammar: async function (name, grammar, force) {
+                const tx = this.db.transaction('grammars', 'readwrite')
+                tx.onerror = e => console.error(e.target.error)
 
-kolorist.init = async function (grammar) {
+                if (force) {
+                    let delReq = tx.objectStore("grammars").delete(name)
+                    delReq.onsuccess = e =>
+                        tx.objectStore('grammars').add({grammar, name})
+                } else
+                    tx.objectStore('grammars').add({grammar, name})
+            },
+            getGrammar: function (name) {
+                return kolorist.utils.database.get('grammars', name, 'grammar')
+            },
+            addToCache: function (language, content) {
+                const tx = this.db.transaction('cache', 'readwrite')
+                tx.onerror = e => console.error(e.target.error)
+                const req = tx.objectStore('cache').add({
+                    content, name: language
+                })
+            },
+            readFromCache: function (language) {
+                return kolorist.utils.database.get('cache', language, 'content')
+            },
+        },
+        newGrammarFrom: function (languageGrammar, oldGrammar, index) {
+            // create an index
+            const newID = oldGrammar.id ? oldGrammar.id + '_' + index.toString() : index.toString(),
+                cached = kolorist.cache[languageGrammar.scope][newID]
+            if (cached) return cached // returned cached grammar if exists
+            let masterGrammar = languageGrammar,
+                grammar = oldGrammar,
+                newGrammar = {
+                    patterns: [],
+                    endPatterns: {},
+                    names: [],
+                    patternsPatterns: {}
+                }
+            const patternsGrammar = grammar.patternsPatterns[index];
+            if (patternsGrammar) {
+                patternsGrammar.patterns.forEach((pattern, index) => {
+                    if (pattern === '$self' || pattern.startsWith('#')) {
+                        let repo = masterGrammar;
+                        if (pattern.startsWith('#')) {
+                            let tagName = pattern.replace('#', '')
+                            repo = masterGrammar.repository[tagName]
+                            if (!repo) return
+                        }
+                        newGrammar.patterns = newGrammar.patterns.concat(repo.patterns)
+                        newGrammar.names = newGrammar.names.concat(repo.names)
+                        for (let i in repo.endPatterns) {
+                            if (!repo.endPatterns.hasOwnProperty(i)) continue
+                            newGrammar.endPatterns[i + index] = repo.endPatterns[i]
+                        }
+                        for (let i in repo.patternsPatterns) {
+                            if (!repo.patternsPatterns.hasOwnProperty(i)) continue
+                            newGrammar.patternsPatterns[i + index] = repo.patternsPatterns[i]
+                        }
+                    } else {
+                        newGrammar.patterns.push(pattern)
+                        newGrammar.names.push(patternsGrammar.names[index])
+                        if (patternsGrammar.endPatterns[index])
+                            newGrammar.endPatterns[index] = patternsGrammar.endPatterns[index]
+                        if (patternsGrammar.patternsPatterns[index])
+                            newGrammar.patternsPatterns[index] = patternsGrammar.patternsPatterns[index]
+                    }
+                })
+            }
+            newGrammar.patterns.push(grammar.endPatterns[index])
+            newGrammar.names.push(grammar.names[index])
+            newGrammar.id = newID
+            kolorist.cache[masterGrammar.scope][newID] = newGrammar
+            return newGrammar
+        }
+    }
+};
+
+kolorist.init = async function (grammar, rebuild) {
     const grammarName = grammar.toLowerCase()
+    // connect to indexedDB
+    await (function () {
+        const request = indexedDB.open('kolorist', 1)
+        let db = kolorist.utils.database.db
 
+        return new Promise((rs, rj) => {
+
+            request.onupgradeneeded = e => {
+                db = e.target.result
+                db.createObjectStore('grammars', {keyPath: 'name'})
+                db.createObjectStore('cache', {keyPath: 'name'})
+                kolorist.utils.database.db = db
+            }
+
+            request.onsuccess = e => {
+                kolorist.utils.database.db = e.target.result
+                rs()
+            }
+
+            request.onerror = e => {
+                console.error(e.target.error)
+                rj()
+            }
+        })
+    })()
+
+    // initiate oniguruma engine
+    await loadWASM('https://cdn.jsdelivr.net/npm/onigasm@2.2.4/lib/onigasm.wasm')
+
+    // return stored if if has already been built previously
+    if (!rebuild) { // rebuild => switch to build grammar regardless of previous "builds"
+        let savedGrammar
+        try {
+            savedGrammar = await kolorist.utils.database.getGrammar(grammarName)
+        } catch (e) {
+            savedGrammar = null
+        }
+        if (savedGrammar)
+            return new Promise(r => r(savedGrammar))
+    }
+
+    // otherwise get grammar from textmate on github
     switch (grammarName) {
         case 'javascript':
             grammar = 'https://cdn.jsdelivr.net/gh/textmate/javascript.tmbundle@master/Syntaxes/JavaScript.plist'
     }
-
-    // initiate oniguruma engine
-    await loadWASM('https://cdn.jsdelivr.net/npm/onigasm@2.2.4/lib/onigasm.wasm')
 
     return new Promise((resolve, reject) => {
         let xmlHttp = new XMLHttpRequest(), plist;
@@ -167,7 +298,7 @@ kolorist.init = async function (grammar) {
             return {patterns, names, endPatterns, patternsPatterns}
         }
 
-        return new Promise(resolve => {
+        return new Promise(async resolve => {
             // parse repo
             let repo = {} // todo: repo inside repo
             for (let tag in json.repository) {
@@ -181,6 +312,11 @@ kolorist.init = async function (grammar) {
             // make grammar
             let grammar = makeList(json, repo)
             grammar.repository = repo
+            grammar.scope = grammarName
+            kolorist.utils.database.saveGrammar(grammarName, grammar, true);
+
+            const cached = await kolorist.utils.database.readFromCache(grammarName);
+            kolorist.cache[grammarName] = cached ? cached : {}
             resolve(grammar)
         })
     }
@@ -270,48 +406,12 @@ kolorist.highlight = async function (code, masterGrammar) {
     }
 
     function scanInside(pos, grammar, index) {
-        // generate pattern grammar
-        let newGrammar = {
-            patterns: [],
-            endPatterns: {},
-            names: [],
-            patternsPatterns: {}
-        }
-        const patternsGrammar = grammar.patternsPatterns[index];
-        if (patternsGrammar) {
-            patternsGrammar.patterns.forEach((pattern, index) => {
-                if (pattern === '$self' || pattern.startsWith('#')) {
-                    let repo = masterGrammar;
-                    if (pattern.startsWith('#')) {
-                        let tagName = pattern.replace('#', '')
-                        repo = masterGrammar.repository[tagName]
-                        if (!repo) return
-                    }
-                    newGrammar.patterns = newGrammar.patterns.concat(repo.patterns)
-                    newGrammar.names = newGrammar.names.concat(repo.names)
-                    for (let i in repo.endPatterns) {
-                        if (!repo.endPatterns.hasOwnProperty(i)) continue
-                        newGrammar.endPatterns[i + index] = repo.endPatterns[i]
-                    }
-                    for (let i in repo.patternsPatterns) {
-                        if (!repo.patternsPatterns.hasOwnProperty(i)) continue
-                        newGrammar.patternsPatterns[i + index] = repo.patternsPatterns[i]
-                    }
-                } else {
-                    newGrammar.patterns.push(pattern)
-                    newGrammar.names.push(patternsGrammar.names[index])
-                    if (patternsGrammar.endPatterns[index])
-                        newGrammar.endPatterns[index] = patternsGrammar.endPatterns[index]
-                    if (patternsGrammar.patternsPatterns[index])
-                        newGrammar.patternsPatterns[index] = patternsGrammar.patternsPatterns[index]
-                }
-            })
-        }
-        newGrammar.patterns.push(grammar.endPatterns[index])
-        newGrammar.names.push(grammar.names[index])
+        // generate grammar for this pattern's pattern
+        let newGrammar = kolorist.utils.newGrammarFrom(masterGrammar, grammar, index)
         return scanForMatch(pos, newGrammar)
     }
 
+    performance.mark('tokens')
     console.log(tokens)
 
     let html = '<pre><div>';
@@ -339,7 +439,17 @@ kolorist.highlight = async function (code, masterGrammar) {
 
     html += '</div></pre>';
 
+    performance.mark('html')
+
     return html
 }
+
+// save cache to db
+window.addEventListener('beforeunload', () => {
+    for (let lang in kolorist.cache) {
+        if (!kolorist.cache.hasOwnProperty(lang)) continue
+        kolorist.utils.database.addToCache(lang, kolorist.cache[lang])
+    }
+})
 
 global.kolorist = kolorist
