@@ -4,15 +4,19 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "browserify main.js -o bundle.js && minify bundle.js -d lib && cp lib/bundle.js ./ && rm -r lib"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/drinking-code/kolorist.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "syntax-highlighting",
+    "language-grammars",
+    "textmate"
+  ],
+  "author": "drinking-code",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/drinking-code/kolorist/issues"
   },

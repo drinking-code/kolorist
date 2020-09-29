@@ -92,11 +92,61 @@ let kolorist = {
             kolorist.cache[masterGrammar.scope][newID] = newGrammar
             return newGrammar
         }
+    },
+    grammarLinks: {
+        ruby: 'https://cdn.jsdelivr.net/gh/textmate/ruby.tmbundle@master/Syntaxes/Ruby.plist',
+        javascript: 'https://cdn.jsdelivr.net/gh/textmate/javascript.tmbundle@master/Syntaxes/JavaScript.plist',
+        markdown: 'https://cdn.jsdelivr.net/gh/textmate/markdown.tmbundle@master/Syntaxes/Markdown.tmLanguage',
+        python: 'https://cdn.jsdelivr.net/gh/textmate/python.tmbundle@master/Syntaxes/Python.tmLanguage',
+        fortran: 'https://cdn.jsdelivr.net/gh/textmate/fortran.tmbundle@master/Syntaxes/Fortran%20-%20Modern.tmLanguage',
+        fortranModern: 'https://cdn.jsdelivr.net/gh/textmate/fortran.tmbundle@master/Syntaxes/Fortran%20-%20Modern.tmLanguage',
+        fortranPunchcard: 'https://cdn.jsdelivr.net/gh/textmate/fortran.tmbundle@master/Syntaxes/Fortran%20-%20Punchcard.tmLanguage',
+        tex: 'https://cdn.jsdelivr.net/gh/textmate/latex.tmbundle@master/Syntaxes/TeX.plist',
+        latex: 'https://cdn.jsdelivr.net/gh/textmate/latex.tmbundle@master/Syntaxes/LaTeX.plist',
+        php: 'https://cdn.jsdelivr.net/gh/textmate/php.tmbundle@master/Syntaxes/PHP.plist',
+        html: 'https://cdn.jsdelivr.net/gh/textmate/html.tmbundle@master/Syntaxes/HTML.plist',
+        css: 'https://cdn.jsdelivr.net/gh/textmate/css.tmbundle@master/Syntaxes/CSS.plist',
+        groovy: 'https://cdn.jsdelivr.net/gh/textmate/groovy.tmbundle@master/Syntaxes/Groovy.tmLanguage',
+        c: 'https://cdn.jsdelivr.net/gh/textmate/c.tmbundle@master/Syntaxes/C.plist',
+        cpp: 'https://cdn.jsdelivr.net/gh/textmate/c.tmbundle@master/Syntaxes/C++.plist',
+        json: 'https://cdn.jsdelivr.net/gh/textmate/json.tmbundle@master/Syntaxes/JSON.tmLanguage',
+        swift: 'https://cdn.jsdelivr.net/gh/textmate/swift.tmbundle@master/Syntaxes/Swift.tmLanguage',
+        java: 'https://cdn.jsdelivr.net/gh/textmate/java.tmbundle@master/Syntaxes/Java.plist',
+        lua: 'https://cdn.jsdelivr.net/gh/textmate/lua.tmbundle@master/Syntaxes/Lua.plist',
+        shellscript: 'https://cdn.jsdelivr.net/gh/textmate/shellscript.tmbundle@master/Syntaxes/Shell-Unix-Bash.tmLanguage',
+        shell: 'https://cdn.jsdelivr.net/gh/textmate/shellscript.tmbundle@master/Syntaxes/Shell-Unix-Bash.tmLanguage',
+        bash: 'https://cdn.jsdelivr.net/gh/textmate/shellscript.tmbundle@master/Syntaxes/Shell-Unix-Bash.tmLanguage',
+        haskell: 'https://cdn.jsdelivr.net/gh/textmate/haskell.tmbundle@master/Syntaxes/Haskell.plist',
+        perl: 'https://cdn.jsdelivr.net/gh/textmate/perl.tmbundle@master/Syntaxes/Perl.plist',
+        perl6: 'https://cdn.jsdelivr.net/gh/textmate/perl.tmbundle@master/Syntaxes/Perl%206.tmLanguage',
+        rubyHaml: 'https://cdn.jsdelivr.net/gh/textmate/ruby-haml.tmbundle@master/Syntaxes/Ruby%20Haml.tmLanguage',
+        rest: 'https://cdn.jsdelivr.net/gh/textmate/restructuredtext.tmbundle@master/Syntaxes/reStructuredText.plist',
+        make: 'https://cdn.jsdelivr.net/gh/textmate/make.tmbundle@master/Syntaxes/Makefile.plist',
+        erlang: 'https://cdn.jsdelivr.net/gh/textmate/erlang.tmbundle@master/Syntaxes/Erlang.plist',
+        lexFlex: 'https://cdn.jsdelivr.net/gh/textmate/lex-flex.tmbundle@master/Syntaxes/Lex:Flex.tmLanguage',
+        matlab: 'https://cdn.jsdelivr.net/gh/textmate/matlab.tmbundle@master/Syntaxes/M.tmLanguage',
+        objC: 'https://cdn.jsdelivr.net/gh/textmate/objective-c.tmbundle@master/Syntaxes/Objective-C.tmLanguage',
+        objCpp: 'https://cdn.jsdelivr.net/gh/textmate/objective-c.tmbundle@master/Syntaxes/Objective-C++.tmLanguage',
+        yaml: 'https://cdn.jsdelivr.net/gh/textmate/yaml.tmbundle@master/Syntaxes/YAML.tmLanguage',
+        processing: 'https://cdn.jsdelivr.net/gh/textmate/processing.tmbundle@master/Syntaxes/Processing.plist',
+        diff: 'https://cdn.jsdelivr.net/gh/textmate/diff.tmbundle@master/Syntaxes/Diff.plist',
+        markdownGH: 'https://cdn.jsdelivr.net/gh/textmate/GitHub-Markdown.tmbundle@master/Syntaxes/Markdown%20(GitHub).tmLanguage',
+        cmakeCache: 'https://cdn.jsdelivr.net/gh/textmate/cmake.tmbundle@master/Syntaxes/CMake%20Cache.tmLanguage',
+        cmake: 'https://cdn.jsdelivr.net/gh/textmate/cmake.tmbundle@master/Syntaxes/CMake%20Listfile.tmLanguage',
+        r: 'https://cdn.jsdelivr.net/gh/textmate/r.tmbundle@master/Syntaxes/R.plist',
+        d: 'https://cdn.jsdelivr.net/gh/textmate/d.tmbundle@master/Syntaxes/D.tmLanguage',
+        asp: 'https://cdn.jsdelivr.net/gh/textmate/asp.tmbundle@master/Syntaxes/ASP.plist',
+        ocaml: 'https://cdn.jsdelivr.net/gh/textmate/ocaml.tmbundle@master/Syntaxes/OCaml.plist',
+        coldfusion: 'https://cdn.jsdelivr.net/gh/textmate/coldfusion.tmbundle@master/Syntaxes/ColdFusion.tmLanguage',
+        xml: 'https://cdn.jsdelivr.net/gh/textmate/xml.tmbundle@master/Syntaxes/XML.plist',
+        xsl: 'https://cdn.jsdelivr.net/gh/textmate/xsl.tmbundle@master/Syntaxes/XSL.plist',
     }
 };
 
 kolorist.init = async function (grammar, rebuild) {
-    const grammarName = grammar.toLowerCase()
+    // initiate oniguruma engine
+    await loadWASM('https://cdn.jsdelivr.net/npm/onigasm@2.2.4/lib/onigasm.wasm')
+
     // connect to indexedDB
     await (function () {
         const request = indexedDB.open('kolorist', 1)
@@ -123,25 +173,58 @@ kolorist.init = async function (grammar, rebuild) {
         })
     })()
 
-    // initiate oniguruma engine
-    await loadWASM('https://cdn.jsdelivr.net/npm/onigasm@2.2.4/lib/onigasm.wasm')
-
-    // return stored if if has already been built previously
-    if (!rebuild) { // rebuild => switch to build grammar regardless of previous "builds"
-        let savedGrammar
+    if (grammar.startsWith('<')) {
+        let plistParsed;
         try {
-            savedGrammar = await kolorist.utils.database.getGrammar(grammarName)
+            plistParsed = parseXML(grammar)
         } catch (e) {
-            savedGrammar = null
+            throw new Error('error while parsing grammar')
         }
-        if (savedGrammar)
-            return new Promise(r => r(savedGrammar))
+        return new Promise(resolve => {
+        translate(plistParsed)
+            .then(async j => resolve(await main(j)))
+        })
+    } else if (grammar.startsWith('http')) {
+        //
+    } else {
+        // otherwise get grammar from textmate on github
+        if (kolorist.grammarLinks[grammar.toLowerCase()])
+            grammar = kolorist.grammarLinks[grammar.toLowerCase()]
+        else
+            throw new Error(`"${grammar}" is not listed in kolorist. Please use a listed name, a URL to a TextMate grammar, or a TextMate grammar (as a string)`)
     }
 
-    // otherwise get grammar from textmate on github
-    switch (grammarName) {
-        case 'javascript':
-            grammar = 'https://cdn.jsdelivr.net/gh/textmate/javascript.tmbundle@master/Syntaxes/JavaScript.plist'
+    async function main(json) {
+        const grammarName = json.name.toLowerCase()
+        // return stored if if has already been built previously
+        if (!rebuild) { // rebuild => switch to build grammar regardless of previous "builds"
+            let savedGrammar
+            try {
+                savedGrammar = await kolorist.utils.database.getGrammar(grammarName)
+            } catch (e) {
+                savedGrammar = null
+            }
+            if (savedGrammar)
+                return savedGrammar
+        }
+        return await makeKoloristGrammars(json)
+    }
+
+    function parseXML(xml) {
+        let plist = xml;
+        // remove all comments (from patterns) and remove all tabs and new-lines
+        plist = plist.replace(/(?:\s|\t)#[\S\s]+?(?=\n)/g, '').replace(/[\n\t]/g, '')
+        let parser, plistParsed;
+        if (window.DOMParser) {
+            parser = new DOMParser();
+            plistParsed = parser.parseFromString(plist, "text/xml");
+        } else // Internet Explorer
+        {
+            plistParsed = new ActiveXObject("Microsoft.XMLDOM");
+            plistParsed.async = false;
+            plistParsed.loadXML(plist);
+        }
+        return plistParsed
     }
 
     return new Promise((resolve, reject) => {
@@ -149,25 +232,11 @@ kolorist.init = async function (grammar, rebuild) {
         xmlHttp.onreadystatechange = () => {
             if (xmlHttp.readyState === 4 && xmlHttp.status === 200) {
                 plist = xmlHttp.response;
-                // remove all comments (from patterns) and remove all tabs and new-lines
-                plist = plist.replace(/(?:\s|\t)#[\S\s]+?(?=\n)/g, '').replace(/[\n\t]/g, '')
-                let parser, plistParsed;
-                if (window.DOMParser) {
-                    parser = new DOMParser();
-                    plistParsed = parser.parseFromString(plist, "text/xml");
-                } else // Internet Explorer
-                {
-                    plistParsed = new ActiveXObject("Microsoft.XMLDOM");
-                    plistParsed.async = false;
-                    plistParsed.loadXML(plist);
-                }
-
-                translate(plistParsed)
-                    .then(j => makeKoloristGrammars(j))
-                    .then(g => resolve(g))
+                translate(parseXML(plist))
+                    .then(async j => resolve(await main(j)))
 
             } else if (xmlHttp.readyState === 4) {
-                reject()
+                reject(xmlHttp.response || null)
             }
         };
         xmlHttp.open("GET", grammar);
@@ -205,13 +274,14 @@ kolorist.init = async function (grammar, rebuild) {
             }
 
             const grammar = generateProperties(xml.querySelector('dict'))
-            console.log(grammar)
+            // console.log(grammar)
             resolve(grammar)
         })
     }
 
     // sort pattern contents into usable arrays
     function makeKoloristGrammars(json) {
+        const grammarName = json.name.toLowerCase()
         // function to shorten code
         function transferCaptures(captures, object) {
             if (captures) {
@@ -334,10 +404,12 @@ kolorist.init = async function (grammar, rebuild) {
 
 }
 
-kolorist.highlight = async function (code, masterGrammar) {
+kolorist.highlight = async function (code, grammar) {
+    const masterGrammar = grammar
+    delete(grammar)
     let tokens = []
 
-    console.log(masterGrammar)
+    // console.log(masterGrammar)
 
     function scanForMatch(pos, grammar) {
         let scanner = new OnigScanner(grammar.patterns)
@@ -411,8 +483,7 @@ kolorist.highlight = async function (code, masterGrammar) {
         return scanForMatch(pos, newGrammar)
     }
 
-    performance.mark('tokens')
-    console.log(tokens)
+    // console.log(tokens)
 
     let html = '<pre><div>';
 
@@ -438,8 +509,6 @@ kolorist.highlight = async function (code, masterGrammar) {
     })
 
     html += '</div></pre>';
-
-    performance.mark('html')
 
     return html
 }

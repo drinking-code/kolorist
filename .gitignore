@@ -5,6 +5,3 @@ node_modules
 
 test.html
 style.css
-package-lock.json
-buildpackage.sh
-bundle.js
