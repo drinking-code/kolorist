@@ -1,10 +1,11 @@
 {
-  "name": "kolorist",
-  "version": "1.0.0",
-  "description": "",
+  "name": "kolorist-highlighter",
+  "version": "1.0.0-alpha",
+  "description": "Customisable front-end syntax highlighter using TextMate grammars",
   "main": "main.js",
   "scripts": {
-    "build": "browserify main.js -o bundle.js && minify bundle.js -d lib && cp lib/bundle.js ./ && rm -r lib"
+    "build-min": "browserify main.js -o bundle.js && minify bundle.js -d lib && cp lib/bundle.js ./ && rm -r lib",
+    "build": "browserify main.js -o bundle.js"
   },
   "repository": {
     "type": "git",

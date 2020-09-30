@@ -1,0 +1,44 @@
+:root {
+    --kolorist-color1: #CC7822;
+    --kolorist-color2: #FFC66D;
+    --kolorist-color3: #9876AA;
+    --kolorist-color4: #6A8759;
+    --kolorist-color5: #6897BB;
+    --kolorist-color6: #808080;
+}
+
+pre.kolorist {
+    background: #2B2B2B;
+    color: #A9B7C6;
+}
+
+[class^=storage-type-],
+.storage-modifier,
+.keyword-control,
+.punctuation-terminator-statement {
+    color: var(--kolorist-color1);
+}
+
+.entity-name-function,
+[class^=punctuation-section-scope],
+.meta-function-call {
+    color: var(--kolorist-color2);
+}
+
+[class^=comment],
+[class^=comment] + span {
+    color: var(--kolorist-color6);
+}
+
+[class^=constant-numeric] {
+    color: var(--kolorist-color5);
+}
+
+[class^=string-quoted-],
+[class^=string-quoted-] + span:not([class^=string-quoted-] + span + [class^=string-quoted-] + span) {
+    color: var(--kolorist-color4);
+}
+
+[class^=meta-preprocessor] {
+    color: var(--kolorist-color3);
+}

@@ -344,6 +344,10 @@ kolorist.init = async function (grammar, rebuild) {
                     }
                     // pull tag reference from repo
                     const group = repo[pattern.include.replace('#', '')]
+                    // some have just one pattern (not in an array)
+                    // console.log(pattern.include)
+                    if (!group.patterns)
+                        group.patterns = [group]
                     // iterate every pattern in pulled tag
                     group.patterns.forEach((repoPattern, repoIndex) => {
                         // correct index inside loop
@@ -374,7 +378,7 @@ kolorist.init = async function (grammar, rebuild) {
             for (let tag in json.repository) {
                 if (!json.repository.hasOwnProperty(tag)) continue
                 repo[tag] = makeList(
-                    (json.repository[tag].patterns) ? json.repository[tag] : {patterns: json.repository[tag]},
+                    (json.repository[tag].patterns) ? json.repository[tag] : {patterns: [json.repository[tag]]},
                     repo,
                     true
                 )
@@ -485,7 +489,7 @@ kolorist.highlight = async function (code, grammar) {
 
     // console.log(tokens)
 
-    let html = '<pre><div>';
+    let html = '<pre class="kolorist"><div>';
 
     tokens.forEach(token => {
         const className = token.name ? token.name : 'plain';

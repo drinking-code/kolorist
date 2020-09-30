@@ -1,25 +1,32 @@
 # Kolorist
 
 ### What is Kolorist?
-Kolorist is a fully customisable, front-end syntax highlighter using TextMate grammars. That not only means that it supports most languages but also that you can use your custom grammar for e.g. your own languages.
+Kolorist is a fully customisable front-end syntax highlighter using TextMate grammars. That not only means that it supports most languages but also that you can use your custom grammar for e.g. your own languages.
+
+> **Note**: Code may not parse correctly, yet, and some grammars may not be able to be parsed at all. This is a known bug and will be fixed shortly.  
+> _The package is not yet ready for production use._
 
 - [Usage](#usage)
-  - [Link](#link)
+  - [Link](#links-quickstart)
   - [`kolorist.init(language | grammar[, rebuild])`](#koloristinitlanguage--grammar-rebuild)
   - [`kolorist.hightlight(code, grammar)`](#koloristhightlightcode-grammar)
   - [Example](#example)
   - [CSS](#css)
 - [Performance](#performance)
 - [Supported Languages](#supported-languages)
+- [Contributing](#contributing)
 
 ## Usage
-### Link
+### Links (Quickstart)
 Add the following line before your kolorist usage:
 ```html
-<script src=""></script>
+<script src="https://cdn.jsdelivr.net/npm/kolorist-highlighter@1.0.0-alpha/bundle.js"></script>
+```
+And this for colours in your html header:
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/kolorist-highlighter@1.0.0-alpha/css/jetbrains.css">
 ```
 
-Kolorist provides two functions:
 ### `kolorist.init(language | grammar[, rebuild])`
 This function returns a promise with a ready-to-use grammar for kolorist. You can feed this grammar into the highlighter function.  
 **Parameters**:
@@ -46,10 +53,18 @@ kolorist.init('javascript')
 ```
 
 ### CSS
-For highlights to show up you need to make a CSS file.
+For highlights to show up you need a CSS file with defined colors and font-styles. You can either make your own by selecting individual code segments, copying their respective class name, and styling them individually, or you can use a pre-made css file (linked [above](#links-quickstart)) as is, or set custom colours with css variables:
+```css
+pre.kolorist {
+    --kolorist-color1: #CC7822;
+    ...
+    --kolorist-color6: #808080;
+}
+```
+More such CSS are to come and maybe support for TextMate themes.
 
 ## Performance
-As it runs completely front-end with the WebAssembly Oniguruma regex engine [`onigasm`](https://github.com/NeekSandhu/onigasm) at its core it isn't super fast, but that will change with future optimisations. Currently, only the grammar translation from TextMate's xml grammars to kolorist's jsons is optimised using on-device caching
+As it runs completely front-end with the WebAssembly Oniguruma regex engine [`onigasm`](https://github.com/NeekSandhu/onigasm) at its core it isn't super fast but that will change with future optimisations. Currently, only the grammar translation from TextMate's xml grammars to kolorist's jsons is optimised using on-device caching.  
 These are the times for parsing 45 lines of JavaScript:
 
 |                          | Safari | Chrome | Firefox | Edge |
@@ -113,3 +128,7 @@ Kolorist supports all languages that have a TextMate grammar. You can find all o
 - xml
 - xsl
 - yaml
+
+## Contributing
+I don't know what to write here. Please do contribute; The code is commented, and it's a great project. Contributing guidelines coming soon, I guess.  
+After making your changes, before a pull request make sure to run `npm run build-min`.
