@@ -24,7 +24,7 @@ let kolorist = {
 
                 if (force) {
                     let delReq = tx.objectStore("grammars").delete(name)
-                    delReq.onsuccess = e =>
+                    delReq.onsuccess = () =>
                         tx.objectStore('grammars').add({grammar, name})
                 } else
                     tx.objectStore('grammars').add({grammar, name})
@@ -63,7 +63,11 @@ let kolorist = {
                         let repo = masterGrammar;
                         if (pattern.startsWith('#')) {
                             let tagName = pattern.replace('#', '')
-                            repo = masterGrammar.repository[tagName]
+                            if (masterGrammar.repository[tagName])
+                                repo = masterGrammar.repository[tagName]
+                            else if (repo.repository[tagName])
+                                repo = repo.repository[tagName]
+                            else throw new Error(pattern + ' doesn\'t exist in the grammar')
                             if (!repo) return
                         }
                         newGrammar.patterns = newGrammar.patterns.concat(repo.patterns)
@@ -181,8 +185,8 @@ kolorist.init = async function (grammar, rebuild) {
             throw new Error('error while parsing grammar')
         }
         return new Promise(resolve => {
-        translate(plistParsed)
-            .then(async j => resolve(await main(j)))
+            translate(plistParsed)
+                .then(async j => resolve(await main(j)))
         })
     } else if (grammar.startsWith('http')) {
         //
@@ -213,7 +217,7 @@ kolorist.init = async function (grammar, rebuild) {
     function parseXML(xml) {
         let plist = xml;
         // remove all comments (from patterns) and remove all tabs and new-lines
-        plist = plist.replace(/(?:\s|\t)#[\S\s]+?(?=\n)/g, '').replace(/[\n\t]/g, '')
+        plist = plist.replace(/(?:\s|\t)#(?!.+?<\/\S+>).+?(?=\n)/g, '').replace(/[\n\t]/g, '')
         let parser, plistParsed;
         if (window.DOMParser) {
             parser = new DOMParser();
@@ -282,6 +286,7 @@ kolorist.init = async function (grammar, rebuild) {
     // sort pattern contents into usable arrays
     function makeKoloristGrammars(json) {
         const grammarName = json.name.toLowerCase()
+
         // function to shorten code
         function transferCaptures(captures, object) {
             if (captures) {
@@ -345,7 +350,6 @@ kolorist.init = async function (grammar, rebuild) {
                     // pull tag reference from repo
                     const group = repo[pattern.include.replace('#', '')]
                     // some have just one pattern (not in an array)
-                    // console.log(pattern.include)
                     if (!group.patterns)
                         group.patterns = [group]
                     // iterate every pattern in pulled tag
@@ -374,29 +378,38 @@ kolorist.init = async function (grammar, rebuild) {
 
         return new Promise(async resolve => {
             // parse repo
-            let repo = {} // todo: repo inside repo
-            for (let tag in json.repository) {
-                if (!json.repository.hasOwnProperty(tag)) continue
-                repo[tag] = makeList(
-                    (json.repository[tag].patterns) ? json.repository[tag] : {patterns: [json.repository[tag]]},
-                    repo,
-                    true
-                )
+            function getRepo(repoJSON) {
+                let repo = {}
+                for (let tag in repoJSON) {
+                    if (!repoJSON.hasOwnProperty(tag)) continue
+                    repo[tag] = makeList(
+                        (repoJSON[tag].patterns && !repoJSON[tag].begin) ? repoJSON[tag] : {patterns: [repoJSON[tag]]},
+                        repo,
+                        true
+                    )
+                    if (repoJSON[tag].repository) {
+                        repo[tag].repository = getRepo(repoJSON[tag].repository)
+                    }
+                }
+                return repo
             }
+
+            const repo = getRepo(json.repository)
             // make grammar
             let grammar = makeList(json, repo)
             grammar.repository = repo
             grammar.scope = grammarName
             kolorist.utils.database.saveGrammar(grammarName, grammar, true);
 
-            const cached = await kolorist.utils.database.readFromCache(grammarName);
+            // read in cache (if 'rebuild' isn't true)
+            const cached = (!rebuild) ? await kolorist.utils.database.readFromCache(grammarName) : {};
+            // make new cache for grammar in non-existing
             kolorist.cache[grammarName] = cached ? cached : {}
             resolve(grammar)
         })
     }
 
     /** parsed grammar:
-     * 2 arrays and 2 objects
      * - array: all patterns
      *       (with #include patterns, begin/end only begin)
      * - array: all names for the pattern
@@ -410,7 +423,7 @@ kolorist.init = async function (grammar, rebuild) {
 
 kolorist.highlight = async function (code, grammar) {
     const masterGrammar = grammar
-    delete(grammar)
+    delete (grammar)
     let tokens = []
 
     // console.log(masterGrammar)
@@ -436,24 +449,29 @@ kolorist.highlight = async function (code, grammar) {
         let end = match.captureIndices[0].end;
         // write match with capture groups
         let content = [], captureNames = [], lastEnd = match.captureIndices[0].start // lastEnd => end of last capture group
-        if (grammar.names[match.index].captures || grammar.names[match.index].beginCaptures) {
-            match.captureIndices.forEach((capture, index) => {
-                if (index === 0) return
-                // exclude not matched capture groups
-                if (capture.start === 4294967295 || capture.end === 4294967295) return
-                // write everything before capture to "content"
-                if (capture.start !== lastEnd) {
-                    content.push(code.substring(lastEnd, capture.start))
-                    captureNames.push(undefined)
-                }
-                content.push(code.substring(capture.start, capture.end))
-                if (grammar.names[match.index].captures)
-                    captureNames.push(grammar.names[match.index].captures[index])
-                else // todo: also get end-captures
-                    captureNames.push(grammar.names[match.index].beginCaptures[index])
+        function chopCaptures(name, index) {
+            let capture = match.captureIndices[index]
+            if (!match) return
+            // exclude not matched capture groups
+            if (capture.start === 4294967295 || capture.end === 4294967295) return
+            // write everything before capture to "content"
+            if (capture.start !== lastEnd) {
+                content.push(code.substring(lastEnd, capture.start))
+                captureNames.push(null)
+            }
+            content.push(code.substring(capture.start, capture.end))
+            captureNames.push(name)
 
-                lastEnd = capture.end
-            })
+            lastEnd = capture.end
+        }
+
+        // captrs is <end capture names> if it is the last match of a nested grammar (grammar generated from a nested pattern / not the masterGrammar)
+        // or <capture names> / <begin capture names>
+        const thisNames = grammar.names[match.index],
+        captrs = (grammar.id && match.index === grammar.patterns.length - 1) ? thisNames.endCaptures : thisNames.captures || thisNames.beginCaptures
+        if (captrs) {
+            for (let i in captrs)
+                chopCaptures(captrs[i], i)
             // write everything remaining in match to "content"
             if (end > lastEnd) {
                 content.push(code.substring(lastEnd, end))
@@ -464,7 +482,7 @@ kolorist.highlight = async function (code, grammar) {
             content: (content.length === 0) ? [code.substring(match.captureIndices[0].start, end)] : content,
             name: grammar.names[match.index].name,
             captureNames,
-            match
+            match // remove
         })
 
         // check if enclosed pattern ("begin", not "match" keyword)
@@ -477,6 +495,7 @@ kolorist.highlight = async function (code, grammar) {
     }
 
     let position = 0;
+    // scan through given code
     while (position < code.length && position !== null) {
         position = scanForMatch(position, masterGrammar)
     }
@@ -492,11 +511,15 @@ kolorist.highlight = async function (code, grammar) {
     let html = '<pre class="kolorist"><div>';
 
     tokens.forEach(token => {
+        // class name for capture (group) with fallback
         const className = token.name ? token.name : 'plain';
         let content = '';
         if (token.captureNames && token.captureNames.length !== 0) {
+            // new <span> for every capture
             token.captureNames.forEach((capture, index) => {
                 const code = token.content[index]
+                    // prevent unwanted html to generate and
+                    // begin new div for every line break
                     .replace(/</g, '&lt;')
                     .replace(/\n/g, '</div><div>')
                 if (capture === undefined)
@@ -509,6 +532,7 @@ kolorist.highlight = async function (code, grammar) {
                 .replace(/</g, '&lt;')
                 .replace(/\n/g, '</div><div>')
 
+        // add rest of the code
         html += `<span class="${className}">${content}</span>`
     })
 
@@ -517,12 +541,13 @@ kolorist.highlight = async function (code, grammar) {
     return html
 }
 
-// save cache to db
-window.addEventListener('beforeunload', () => {
-    for (let lang in kolorist.cache) {
-        if (!kolorist.cache.hasOwnProperty(lang)) continue
-        kolorist.utils.database.addToCache(lang, kolorist.cache[lang])
-    }
-})
+if (window)
+    // save cache to db
+    window.addEventListener('beforeunload', () => {
+        for (let lang in kolorist.cache) {
+            if (!kolorist.cache.hasOwnProperty(lang)) continue
+            kolorist.utils.database.addToCache(lang, kolorist.cache[lang])
+        }
+    })
 
 global.kolorist = kolorist
