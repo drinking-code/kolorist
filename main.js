@@ -35,9 +35,11 @@ let kolorist = {
             addToCache: function (language, content) {
                 const tx = this.db.transaction('cache', 'readwrite')
                 tx.onerror = e => console.error(e.target.error)
-                const req = tx.objectStore('cache').add({
-                    content, name: language
-                })
+                let delReq = tx.objectStore('cache').delete(language)
+                delReq.onsuccess = () =>
+                    tx.objectStore('cache').add({
+                        content, name: language
+                    })
             },
             readFromCache: function (language) {
                 return kolorist.utils.database.get('cache', language, 'content')
@@ -46,7 +48,7 @@ let kolorist = {
         newGrammarFrom: function (languageGrammar, oldGrammar, index) {
             // create an index
             const newID = oldGrammar.id ? oldGrammar.id + '_' + index.toString() : index.toString(),
-                cached = kolorist.cache[languageGrammar.scope][newID]
+                cached = (kolorist.cache[languageGrammar.scope]) ? kolorist.cache[languageGrammar.scope][newID] : null
             if (cached) return cached // returned cached grammar if exists
             let masterGrammar = languageGrammar,
                 grammar = oldGrammar,
@@ -54,33 +56,54 @@ let kolorist = {
                     patterns: [],
                     endPatterns: {},
                     names: [],
-                    patternsPatterns: {}
+                    patternsPatterns: {},
+                    registry: {},
+                    repository: {}
                 }
+            // inherit old repository (only if it's not the masterGrammar)
+            if (oldGrammar.id) newGrammar.repository = oldGrammar.repository
+            // get repository of repository entry (if exists)
+            const repoEntry = oldGrammar.registry[index],
+                nestedRepo = masterGrammar.repository[Array.isArray(repoEntry) ? repoEntry[0].replace('#', '') : undefined]?.repository
+            if (repoEntry && nestedRepo) {
+                for (let tag in nestedRepo) {
+                    if (!nestedRepo.hasOwnProperty(tag)) continue
+                    newGrammar.repository[tag] = nestedRepo[tag]
+                }
+            }
             const patternsGrammar = grammar.patternsPatterns[index];
+            // only do if there are patterns at all
+            let addToIndex = 0;
             if (patternsGrammar) {
-                patternsGrammar.patterns.forEach((pattern, index) => {
+                patternsGrammar.patterns.forEach((pattern, index) => { // todo add registry entries
+                    const oldIndex = index
+                    index += addToIndex
+                    // if pattern is a reference
                     if (pattern === '$self' || pattern.startsWith('#')) {
                         let repo = masterGrammar;
-                        if (pattern.startsWith('#')) {
+                        if (pattern.startsWith('#')) { // if pattern is reference to repository
+
                             let tagName = pattern.replace('#', '')
                             if (masterGrammar.repository[tagName])
                                 repo = masterGrammar.repository[tagName]
-                            else if (repo.repository[tagName])
-                                repo = repo.repository[tagName]
-                            else throw new Error(pattern + ' doesn\'t exist in the grammar')
+                            else if (oldGrammar.repository[tagName])
+                                repo = oldGrammar.repository[tagName]
+                            // else throw new Error(pattern + ' doesn\'t exist in the grammar')
+                            else console.warn(pattern + ' doesn\'t exist in the grammar')
                             if (!repo) return
                         }
                         newGrammar.patterns = newGrammar.patterns.concat(repo.patterns)
                         newGrammar.names = newGrammar.names.concat(repo.names)
                         for (let i in repo.endPatterns) {
                             if (!repo.endPatterns.hasOwnProperty(i)) continue
-                            newGrammar.endPatterns[i + index] = repo.endPatterns[i]
+                            newGrammar.endPatterns[Number(i) + Number(index)] = repo.endPatterns[i]
                         }
                         for (let i in repo.patternsPatterns) {
                             if (!repo.patternsPatterns.hasOwnProperty(i)) continue
-                            newGrammar.patternsPatterns[i + index] = repo.patternsPatterns[i]
+                            newGrammar.patternsPatterns[Number(i) + Number(index)] = repo.patternsPatterns[i]
                         }
-                    } else {
+                        addToIndex += repo.patterns.length
+                    } else { // if pattern is not a reference but a pattern
                         newGrammar.patterns.push(pattern)
                         newGrammar.names.push(patternsGrammar.names[index])
                         if (patternsGrammar.endPatterns[index])
@@ -93,6 +116,7 @@ let kolorist = {
             newGrammar.patterns.push(grammar.endPatterns[index])
             newGrammar.names.push(grammar.names[index])
             newGrammar.id = newID
+            if (!kolorist.cache[languageGrammar.scope]) kolorist.cache[languageGrammar.scope] = {}
             kolorist.cache[masterGrammar.scope][newID] = newGrammar
             return newGrammar
         }
@@ -304,7 +328,7 @@ kolorist.init = async function (grammar, rebuild) {
         }
 
         function makeList(plistJSON, repo, makeRepo) {
-            let patterns = [], names = [], endPatterns = {}, patternsPatterns = {}, addToIndex = 0
+            let patterns = [], names = [], endPatterns = {}, patternsPatterns = {}, registry = {}, addToIndex = 0
             plistJSON.patterns.forEach((pattern, index) => {
                 // store the original index
                 const origIndex = index;
@@ -356,6 +380,7 @@ kolorist.init = async function (grammar, rebuild) {
                     group.patterns.forEach((repoPattern, repoIndex) => {
                         // correct index inside loop
                         index = origIndex + addToIndex;
+                        registry[index.toString()] = [pattern.include];
                         patterns.push(repoPattern)
                         names.push(group.names[repoIndex])
                         if (group.endPatterns[repoIndex])
@@ -373,7 +398,7 @@ kolorist.init = async function (grammar, rebuild) {
                 if (pattern.match || (pattern.begin && pattern.end))
                     names.push(namesCaptures)
             })
-            return {patterns, names, endPatterns, patternsPatterns}
+            return {patterns, names, endPatterns, patternsPatterns, registry}
         }
 
         return new Promise(async resolve => {
@@ -410,20 +435,27 @@ kolorist.init = async function (grammar, rebuild) {
     }
 
     /** parsed grammar:
-     * - array: all patterns
-     *       (with #include patterns, begin/end only begin)
-     * - array: all names for the pattern
-     *       (every item is an object with 2 keys: name <name of pattern or undefined>, and captures <defined captures>)
-     * - object: all end patterns (key: index of begin/end pattern in first array <end pattern>)
-     * - object: all names for end patterns (key: index of end pattern in first array <name>) todo
-     * - object: all patterns of begin/end patterns
-     *       (key: index of begin/end pattern in first array <object of all included patterns>)*/
+     * patterns:Array
+     *      all patterns in the (current) grammar
+     * names:Array
+     *      all names for the patterns (every name is an Object with the overall name and names for the capture groups)
+     * endPatterns:Object with keys according to patterns' indices
+     *      all end patterns for begin/end patterns
+     * patternsPatterns:Object with keys according to patterns' indices
+     *      all patterns for begin/end patterns that have patterns
+     * registry:Object with keys according to patterns' indices
+     *      lists affiliation to a repository key for all patterns that derived from the repository
+     * repository:Object
+     *      lists all keys of the repository as individual grammars
+     * scope:String (only in the master grammar)
+     *      name of the grammar
+     * id:String (in all but the master grammar)
+     *      trace from the master grammar to this grammar via the pattern IDs / patterns that this grammar derived from
+     * */
 
 }
 
-kolorist.highlight = async function (code, grammar) {
-    const masterGrammar = grammar
-    delete (grammar)
+kolorist.highlight = async function (code, masterGrammar) {
     let tokens = []
 
     // console.log(masterGrammar)
@@ -436,7 +468,7 @@ kolorist.highlight = async function (code, grammar) {
             tokens.push({
                 content: [code.substring(pos, code.length)]
             })
-            return null
+            return {end: code.length}
         }
 
         // write everything not matched (from pos to match.start) to array as plain text
@@ -467,8 +499,8 @@ kolorist.highlight = async function (code, grammar) {
 
         // captrs is <end capture names> if it is the last match of a nested grammar (grammar generated from a nested pattern / not the masterGrammar)
         // or <capture names> / <begin capture names>
-        const thisNames = grammar.names[match.index],
-        captrs = (grammar.id && match.index === grammar.patterns.length - 1) ? thisNames.endCaptures : thisNames.captures || thisNames.beginCaptures
+        const thisNames = grammar.names[match.index] || {},
+            captrs = (grammar.id && match.index === grammar.patterns.length - 1) ? thisNames.endCaptures : thisNames.captures || thisNames.beginCaptures
         if (captrs) {
             for (let i in captrs)
                 chopCaptures(captrs[i], i)
@@ -480,9 +512,8 @@ kolorist.highlight = async function (code, grammar) {
         }
         tokens.push({
             content: (content.length === 0) ? [code.substring(match.captureIndices[0].start, end)] : content,
-            name: grammar.names[match.index].name,
-            captureNames,
-            match // remove
+            name: grammar.names[match.index]?.name,
+            captureNames
         })
 
         // check if enclosed pattern ("begin", not "match" keyword)
@@ -491,19 +522,30 @@ kolorist.highlight = async function (code, grammar) {
             end = scanInside(match.captureIndices[0].end, grammar, match.index)
         }
 
-        return end
+        return {last: match.index === grammar.patterns.length - 1, end}
     }
 
-    let position = 0;
+    let position = 0
     // scan through given code
-    while (position < code.length && position !== null) {
-        position = scanForMatch(position, masterGrammar)
+    while (position < code.length) {
+        const ret = scanForMatch(position, masterGrammar)
+        position = ret.end
     }
 
     function scanInside(pos, grammar, index) {
         // generate grammar for this pattern's pattern
         let newGrammar = kolorist.utils.newGrammarFrom(masterGrammar, grammar, index)
-        return scanForMatch(pos, newGrammar)
+        // console.log(grammar)
+        // scan through given code
+        let last = false;
+        while (!last) {
+            const ret = scanForMatch(pos, newGrammar)
+            pos = ret.end
+            last = ret.last
+            if (pos === code.length) last = true
+        }
+        return pos
+        return code.length
     }
 
     // console.log(tokens)
